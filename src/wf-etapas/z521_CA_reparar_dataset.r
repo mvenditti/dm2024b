@@ -1,4 +1,5 @@
 #!/usr/bin/env Rscript
+library(mice)
 
 # Experimentos Colaborativos Default
 # Workflow  Catastrophe Analysis
@@ -194,6 +195,30 @@ Corregir_MachineLearning <- function(dataset) {
 
   cat( "fin Corregir_MachineLearning()\n")
 }
+
+#------------------------------------------------------------------------------
+
+Corregir_MICE <- function(dataset) {
+  cat( "inicio Corregir_MICE()\n")
+  
+  imputed_data <- mice(dataset, m = 10, method = 'pmm', maxit = 50, seed = 100109)
+  all_imputed_data = complete(imputed_data, action = 'all')
+  
+  average_data <- dataset
+  
+  # Calcula el promedio para cada columna por todos los datos imputados
+  for (col in names(dataset)) {
+    if (any(is.na(dataset[[col]]))) {  # Solo para columnas que tienen datos faltantes
+      imputed_values <- sapply(all_imputed_data, function(x) x[[col]])
+      average_data[[col]] <- rowMeans(imputed_values, na.rm = TRUE)
+    }
+  }
+  
+  dataset = average_data
+  
+  cat( "fin Corregir_MICE()\n")
+}
+
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 # Aqui empieza el programa
@@ -223,6 +248,7 @@ setorderv(dataset, envg$PARAM$dataset_metadata$primarykey)
 switch( envg$PARAM$metodo,
   "MachineLearning"     = Corregir_MachineLearning(dataset),
   "EstadisticaClasica"  = Corregir_EstadisticaClasica(dataset),
+  "MICE"                = Corregir_MICE(dataset),
   "Ninguno"             = cat("No se aplica ninguna correccion.\n"),
 )
 
