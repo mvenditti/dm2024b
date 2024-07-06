@@ -199,24 +199,50 @@ Corregir_MachineLearning <- function(dataset) {
 #------------------------------------------------------------------------------
 
 Corregir_MICE <- function(dataset) {
-  cat( "inicio Corregir_MICE()\n")
+  cat("inicio Corregir_MICE()\n")
   
-  imputed_data <- mice(dataset, m = 10, method = 'pmm', maxit = 50, seed = 100109)
-  all_imputed_data = complete(imputed_data, action = 'all')
-  
-  average_data <- dataset
-  
-  # Calcula el promedio para cada columna por todos los datos imputados
-  for (col in names(dataset)) {
-    if (any(is.na(dataset[[col]]))) {  # Solo para columnas que tienen datos faltantes
-      imputed_values <- sapply(all_imputed_data, function(x) x[[col]])
-      average_data[[col]] <- rowMeans(imputed_values, na.rm = TRUE)
-    }
+  # Asegurar que el paquete 'caret' esté cargado
+  if (!requireNamespace("caret", quietly = TRUE)) {
+    stop("El paquete 'caret' es necesario pero no está instalado.")
   }
+  library(caret)
   
-  dataset = average_data
+  # Seleccionar solo las variables numéricas
+  numeric_vars <- names(dataset)[sapply(dataset, is.numeric)]
   
-  cat( "fin Corregir_MICE()\n")
+  # Convertir a data frame
+  df <- as.data.frame(dataset)
+  
+  # Filtrar variables con desviación estándar cero
+  numeric_data <- df[, numeric_vars, drop = FALSE]
+  non_zero_sd_vars <- numeric_vars[apply(numeric_data, 2, function(x) sd(x, na.rm = TRUE) > 0)]
+  
+  # Remover columnas con NA en la matriz de correlación
+  numeric_data <- df[, non_zero_sd_vars, drop = FALSE]
+  cor_matrix <- cor(numeric_data, use = "pairwise.complete.obs")
+  complete_cases <- complete.cases(cor_matrix)
+  cor_matrix <- cor_matrix[complete_cases, complete_cases]
+  
+  # Verificar y remover variables colineales
+  high_cor_vars <- findCorrelation(cor_matrix, cutoff = 0.95)
+  filtered_vars <- non_zero_sd_vars[complete_cases][-high_cor_vars]
+  
+  # Verificar si hay variables con todos los valores NA y removerlas
+  non_all_na_vars <- filtered_vars[!apply(numeric_data[, filtered_vars, drop = FALSE], 2, function(x) all(is.na(x)))]
+  
+  # Aplicar MICE a las variables filtradas
+  tryCatch({
+    imputed_data <- mice(df[, non_all_na_vars, drop = FALSE], m = 5, method = 'pmm', maxit = 10, seed = 500, printFlag = TRUE)
+    
+    # Actualizar el dataset original con los valores imputados
+    for (var in non_all_na_vars) {
+      dataset[, (var) := complete(imputed_data, 1)[, var]]
+    }
+  }, error = function(e) {
+    cat("Error en la imputación con MICE: ", e$message, "\n")
+  })
+  
+  cat("fin Corregir_MICE()\n")
 }
 
 #------------------------------------------------------------------------------
