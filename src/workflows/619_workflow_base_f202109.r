@@ -333,7 +333,7 @@ HT_tuning_base <- function( pinputexps, bypass=FALSE)
     # Parte variable
     learning_rate = c( 0.02, 0.8 ),
     feature_fraction = c( 0.5, 0.9 ),
-    num_leaves = c( 8L, 2048L,  "integer" ),
+    num_leaves =  c( 8L, 2048L,  "integer" ),
     min_data_in_leaf = c( 100L, 10000L, "integer" )
   )
   
@@ -390,9 +390,9 @@ wf_sept <- function( pnombrewf )
   param_local <- exp_wf_init( pnombrewf ) # linea fija
   
   DT_incorporar_dataset_competencia2024()
-  CA_catastrophe_base( metodo="MICE")
+  CA_catastrophe_base( metodo="Ninguno")
   FEintra_base()
-  DR_drifting_base(metodo="rank_cero_fijo")
+  DR_drifting_base(metodo="rank_simple")
   FEhist_base()
   FErf_attributes_base()
   #CN_canaritos_asesinos_base(ratio=0.2, desvio=4.0)
